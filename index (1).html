@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Avatar</title>
+  <style>
+    body { margin: 0; background: #0d0d0d; color: #f0f0f0; font-family: Arial, sans-serif; }
+  </style>
+</head>
+<body>
+
+  <!--
+    This is the ONLY thing needed.
+    D-ID embed handles everything — video, audio, WebRTC, UI.
+    After connected, window.DID_AGENTS_API.functions.speak() works.
+  -->
+  <script
+    type="module"
+    src="https://agent.d-id.com/v2/index.js"
+    data-mode="fabio"
+    data-client-key="Z29vZ2xlLW9hdXRoMnwxMDg1MzgzODIxMDg4OTU5MjE2MzA6dUtILVVlUFhjeFNUZS1lNjV2VG5t"
+    data-agent-id="v2_agt_LxzjMQLP"
+    data-name="did-agent"
+    data-auto-connect="true"
+    data-open-mode="expanded"
+    data-orientation="horizontal"
+    data-position="right"
+  ></script>
+
+  <script>
+    const N8N_WEBHOOK = 'https://rafa5555.app.n8n.cloud/webhook/22e378ba-aa29-44e6-bb40-7b434f726689/chat';
+
+    // Wait for D-ID API then hook into it
+    function waitForAPI() {
+      return new Promise(resolve => {
+        if (window.DID_AGENTS_API) { resolve(window.DID_AGENTS_API); return; }
+        const t = setInterval(() => {
+          if (window.DID_AGENTS_API) { clearInterval(t); resolve(window.DID_AGENTS_API); }
+        }, 100);
+      });
+    }
+
+    waitForAPI().then(api => {
+      console.log('D-ID API ready');
+
+      api.events.on('connection', ({ state }) => {
+        console.log('Connection:', state);
+      });
+
+      // Override the chat send to go through n8n instead of D-ID brain
+      api.events.on('message', async ({ text }) => {
+        if (!text) return;
+        try {
+          const res = await fetch(N8N_WEBHOOK, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+          });
+          const data = await res.json();
+          const reply = data.reply ?? data.output ?? data.text ?? data.message;
+          if (reply) {
+            await api.functions.speak({ type: 'text', input: reply });
+          }
+        } catch(e) {
+          console.error('n8n error:', e);
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
