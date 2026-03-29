@@ -137,6 +137,10 @@
         await agentManager.speak({
           script: {
             type: 'text',
+            provider: {
+              type: 'microsoft',
+              voice_id: 'en-IN-AartiNeural'
+            },
             input: reply
           }
         });
