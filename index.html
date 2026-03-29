@@ -106,7 +106,7 @@
           setStatus('Speaking...');
         }
       },
-      onError(e) { console.error(e); setStatus('Error: ' + e.message); }
+      onError(e) { console.error(e); setStatus('Error: ' + (e?.message ?? JSON.stringify(e))); }
     };
 
     setStatus('Connecting...');
@@ -119,7 +119,7 @@
 
     async function send() {
       const text = inputEl.value.trim();
-      if (!text || !connected) return;
+      if (!text || text.length < 3 || !connected) return;
       inputEl.value = '';
       setReady(false);
       setStatus('Thinking...');
@@ -133,9 +133,16 @@
         const data = await res.json();
         const reply = data.reply ?? data.output ?? data.text ?? data.message;
         if (!reply) throw new Error('No reply from n8n');
-        await agentManager.speak({ type: 'text', input: reply });
+
+        await agentManager.speak({
+          script: {
+            type: 'text',
+            input: reply
+          }
+        });
       } catch(e) {
         setStatus('Error: ' + e.message);
+        console.error(e);
       }
       setReady(true);
     }
