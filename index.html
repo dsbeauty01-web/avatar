@@ -20,94 +20,60 @@
     }
     h1 { font-size: 1.2rem; font-weight: 500; color: #aaa; }
     #avatar-wrap {
-      width: 360px;
-      height: 360px;
+      width: 360px; height: 360px;
       border-radius: 50%;
       overflow: hidden;
       background: #111;
       border: 3px solid #333;
     }
-    #avatar-video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    #chat-box {
-      display: flex;
-      gap: 10px;
-      width: 100%;
-      max-width: 480px;
-    }
+    #avatar-video { width: 100%; height: 100%; object-fit: cover; }
+    #chat-box { display: flex; gap: 10px; width: 100%; max-width: 480px; }
     #user-input {
-      flex: 1;
-      padding: 13px 18px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 999px;
-      color: #f0f0f0;
-      font-size: 1rem;
-      outline: none;
+      flex: 1; padding: 13px 18px;
+      background: #1a1a1a; border: 1px solid #333;
+      border-radius: 999px; color: #f0f0f0; font-size: 1rem; outline: none;
     }
     #user-input:disabled { opacity: .4; }
     #send-btn {
-      padding: 13px 22px;
-      background: #1e88e5;
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      font-size: 1rem;
-      cursor: pointer;
+      padding: 13px 22px; background: #1e88e5; color: #fff;
+      border: none; border-radius: 999px; font-size: 1rem; cursor: pointer;
     }
-    #send-btn:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-    }
-    #status {
-      font-size: .82rem;
-      color: #888;
-      text-align: center;
-      max-width: 480px;
-      word-break: break-word;
-    }
+    #send-btn:disabled { opacity: .4; cursor: not-allowed; }
+    #status { font-size: .82rem; color: #888; text-align: center; }
   </style>
 </head>
 <body>
-  <h1>AI Avatar</h1>
 
+  <h1>AI Avatar</h1>
   <div id="avatar-wrap">
     <video id="avatar-video" autoplay playsinline muted></video>
   </div>
-
   <div id="chat-box">
-    <input id="user-input" type="text" placeholder="Type a message..." disabled />
+    <input id="user-input" type="text" placeholder="Type a message…" disabled/>
     <button id="send-btn" disabled>Send</button>
   </div>
-
   <div id="status">Loading...</div>
 
   <script type="module">
     import { createAgentManager } from 'https://esm.sh/@d-id/client-sdk@1.1.53';
 
-    const AGENT_ID = 'v2_agt_LxzjMQLP';
-    const CLIENT_KEY = 'PUT_YOUR_CLIENT_KEY_HERE';
+    const AGENT_ID    = 'v2_agt_LxzjMQLP';
+    const CLIENT_KEY  = 'Z29vZ2xlLW9hdXRoMnwxMDg1MzgzODIxMDg4OTU5MjE2MzA6dUtILVVlUFhjeFNUZS1lNjV2VG5t';
     const N8N_WEBHOOK = 'https://rafa5555.app.n8n.cloud/webhook/22e378ba-aa29-44e6-bb40-7b434f726689/chat';
 
-    const videoEl = document.getElementById('avatar-video');
-    const inputEl = document.getElementById('user-input');
-    const btnEl = document.getElementById('send-btn');
+    const videoEl  = document.getElementById('avatar-video');
+    const inputEl  = document.getElementById('user-input');
+    const btnEl    = document.getElementById('send-btn');
     const statusEl = document.getElementById('status');
 
     let agentManager = null;
-    let connected = false;
-    let stream = null;
+    let connected    = false;
+    let stream       = null;
 
-    function setStatus(text) {
-      statusEl.textContent = text;
-    }
-
+    function setStatus(s) { statusEl.textContent = s; }
     function setReady(yes) {
       inputEl.disabled = !yes;
-      btnEl.disabled = !yes;
+      btnEl.disabled   = !yes;
       if (yes) inputEl.focus();
     }
 
@@ -118,8 +84,8 @@
         videoEl.muted = true;
         videoEl.play().catch(() => {});
       },
-
       onConnectionStateChange(state) {
+        setStatus(state);
         if (state === 'connected') {
           connected = true;
           setReady(true);
@@ -127,34 +93,20 @@
         } else if (state === 'disconnected' || state === 'closed') {
           connected = false;
           setReady(false);
-          setStatus('Disconnected — reconnecting...');
-          setTimeout(() => agentManager?.reconnect?.(), 3000);
-        } else {
-          setStatus(state);
+          setTimeout(() => agentManager?.reconnect(), 3000);
         }
       },
-
       onVideoStateChange(state) {
         if (state === 'STOP') {
           const idle = agentManager?.agent?.presenter?.idle_video;
-          if (idle) {
-            videoEl.srcObject = null;
-            videoEl.src = idle;
-            videoEl.loop = true;
-            videoEl.play().catch(() => {});
-          }
+          if (idle) { videoEl.srcObject = null; videoEl.src = idle; videoEl.loop = true; videoEl.play().catch(() => {}); }
           if (connected) setStatus('Connected ✓ — type a message');
         } else {
-          videoEl.src = '';
-          videoEl.srcObject = stream;
+          videoEl.src = ''; videoEl.srcObject = stream;
           setStatus('Speaking...');
         }
       },
-
-      onError(e) {
-        console.error(e);
-        setStatus('Error: ' + (e?.message ?? JSON.stringify(e)));
-      }
+      onError(e) { console.error(e); setStatus('Error: ' + (e?.message ?? JSON.stringify(e))); }
     };
 
     async function init() {
@@ -166,16 +118,17 @@
           streamOptions: { compatibilityMode: 'auto', streamWarmup: true }
         });
         await agentManager.connect();
-      } catch (e) {
-        console.error(e);
-        setStatus('Init error: ' + (e?.message ?? String(e)));
+      } catch(e) {
+        setStatus('Failed to connect — retrying...');
+        setTimeout(init, 5000);
       }
     }
 
+    init();
+
     async function send() {
       const text = inputEl.value.trim();
-      if (!text || !connected) return;
-
+      if (!text || text.length < 3 || !connected) return;
       inputEl.value = '';
       setReady(false);
       setStatus('Thinking...');
@@ -186,56 +139,31 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text })
         });
-
-        if (!res.ok) {
-          throw new Error('Webhook HTTP ' + res.status);
-        }
-
         const data = await res.json();
+        const reply = data.reply ?? data.output ?? data.text ?? data.message;
+        if (!reply) throw new Error('No reply from n8n');
 
-        let speakPayload = null;
-
-        if (data && data.type === 'text' && typeof data.input === 'string') {
-          speakPayload = {
+        await agentManager.speak({
+          script: {
             type: 'text',
-            input: data.input
-          };
-        } else {
-          const reply =
-            data?.reply ??
-            data?.output ??
-            data?.text ??
-            data?.message ??
-            (typeof data === 'string' ? data : null);
-
-          if (!reply) {
-            throw new Error('No usable reply from n8n: ' + JSON.stringify(data));
-          }
-
-          speakPayload = {
-            type: 'text',
+            provider: {
+              type: 'microsoft',
+              voice_id: 'en-IN-AartiNeural'
+            },
             input: reply
-          };
-        }
-
-        await agentManager.speak(speakPayload);
-      } catch (e) {
+          }
+        });
+      } catch(e) {
+        setStatus('Error: ' + e.message);
         console.error(e);
-        setStatus('Error: ' + (e?.message ?? String(e)));
       }
-
       setReady(true);
     }
 
     btnEl.addEventListener('click', send);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        send();
-      }
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); send(); }
     });
-
-    init();
   </script>
 </body>
 </html>
