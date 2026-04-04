@@ -140,8 +140,11 @@
           body: JSON.stringify({ message: text })
         });
         const data = await res.json();
-        const reply = data.reply ?? data.output ?? data.text ?? data.message
-                   ?? data.choices?.[0]?.message?.content;
+
+        // get reply and strip any leading = sign from n8n expressions
+        let reply = data.reply ?? data.output ?? data.text ?? data.message
+                 ?? data.choices?.[0]?.message?.content;
+        if (reply) reply = reply.replace(/^=/, '').trim();
         if (!reply) throw new Error('No reply from n8n');
 
         await agentManager.speak({
@@ -154,6 +157,7 @@
             input: reply
           }
         });
+        setStatus('Speaking...');
       } catch(e) {
         setStatus('Error: ' + e.message);
         console.error(e);
