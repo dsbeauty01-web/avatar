@@ -59,6 +59,122 @@
 
     const AGENT_ID    = 'v2_agt_LxzjMQLP';
     const CLIENT_KEY  = 'Z29vZ2xlLW9hdXRoMnwxMDg1MzgzODIxMDg4OTU5MjE2MzA6dUtILVVlUFhjeFNUZS1lNjV2VG5t';
-    const N8N_WEBHOOK = 'https://rafa5555.app.n8n.cloud/webhook/d-id-webhook/v1/chat/completions';
+    const N8N_WEBHOOK = 'https://rafa5555.app.n8n.cloud/webhook/22e378ba-aa29-44e6-bb40-7b434f726689/chat';
 
-    const videoEl  = document.getElementById('avata
+    const videoEl  = document.getElementById('avatar-video');
+    const inputEl  = document.getElementById('user-input');
+    const btnEl    = document.getElementById('send-btn');
+    const statusEl = document.getElementById('status');
+
+    let agentManager = null;
+    let connected    = false;
+    let stream       = null;
+
+    function setStatus(s) { statusEl.textContent = s; }
+    function setReady(yes) {
+      inputEl.disabled = !yes;
+      btnEl.disabled   = !yes;
+      if (yes) inputEl.focus();
+    }
+
+    const callbacks = {
+      onSrcObjectReady(value) {
+        stream = value;
+        videoEl.srcObject = value;
+        videoEl.muted = true;
+        videoEl.play().catch(() => {});
+      },
+      onConnectionStateChange(state) {
+        setStatus(state);
+        if (state === 'connected') {
+          connected = true;
+          setReady(true);
+          setStatus('Connected ✓ — type a message');
+        } else if (state === 'disconnected' || state === 'closed') {
+          connected = false;
+          setReady(false);
+          setTimeout(() => agentManager?.reconnect(), 3000);
+        }
+      },
+      onVideoStateChange(state) {
+        if (state === 'STOP') {
+          const idle = agentManager?.agent?.presenter?.idle_video;
+          if (idle) {
+            videoEl.srcObject = null;
+            videoEl.src = idle;
+            videoEl.loop = true;
+            videoEl.play().catch(() => {});
+          }
+          if (connected) setStatus('Connected ✓ — type a message');
+        } else {
+          videoEl.src = '';
+          videoEl.srcObject = stream;
+          setStatus('Speaking...');
+        }
+      },
+      onError(e) {
+        console.error(e);
+        setStatus('Error: ' + (e?.message ?? JSON.stringify(e)));
+      }
+    };
+
+    function init() {
+      setStatus('Connecting...');
+      createAgentManager(AGENT_ID, {
+        auth: { type: 'key', clientKey: CLIENT_KEY },
+        callbacks,
+        streamOptions: { compatibilityMode: 'auto', streamWarmup: true }
+      }).then(function(manager) {
+        agentManager = manager;
+        return agentManager.connect();
+      }).then(function() {
+        console.log('connect() done');
+      }).catch(function(e) {
+        setStatus('Failed — retrying...');
+        console.error(e);
+        setTimeout(init, 5000);
+      });
+    }
+
+    init();
+
+    async function send() {
+      const text = inputEl.value.trim();
+      if (!text || !connected) return;
+      inputEl.value = '';
+      setReady(false);
+      setStatus('Thinking...');
+
+      try {
+        const res = await fetch(N8N_WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+
+        let reply = data.reply ?? data.output ?? data.text ?? data.message
+                 ?? data.choices?.[0]?.message?.content;
+        if (reply) reply = reply.replace(/^=/, '').trim();
+        if (!reply) throw new Error('No reply from n8n');
+
+        await agentManager.speak({
+          type: 'text',
+          input: reply
+        });
+
+        setStatus('Speaking...');
+      } catch(e) {
+        setStatus('Error: ' + e.message);
+        console.error(e);
+      }
+      setReady(true);
+    }
+
+    btnEl.addEventListener('click', send);
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); send(); }
+    });
+  </script>
+</body>
+</html>
