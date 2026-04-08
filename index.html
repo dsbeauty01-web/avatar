@@ -59,7 +59,7 @@
 
     const AGENT_ID    = 'v2_agt_LxzjMQLP';
     const CLIENT_KEY  = 'Z29vZ2xlLW9hdXRoMnwxMDg1MzgzODIxMDg4OTU5MjE2MzA6dUtILVVlUFhjeFNUZS1lNjV2VG5t';
-    const N8N_WEBHOOK = 'https://rafa5555.app.n8n.cloud/webhook/22e378ba-aa29-44e6-bb40-7b434f726689/chat';
+    const N8N_WEBHOOK = 'https://rafa5555.app.n8n.cloud/webhook/d-id-webhook/v1/chat/completions';
 
     const videoEl  = document.getElementById('avatar-video');
     const inputEl  = document.getElementById('user-input');
@@ -149,7 +149,10 @@
         const res = await fetch(N8N_WEBHOOK, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: text }],
+            stream: false
+          })
         });
         const data = await res.json();
 
