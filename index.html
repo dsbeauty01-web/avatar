@@ -25,6 +25,7 @@
       overflow: hidden;
       background: #111;
       border: 3px solid #333;
+      cursor: pointer;
     }
     #avatar-video { width: 100%; height: 100%; object-fit: cover; }
     #chat-box { display: flex; gap: 10px; width: 100%; max-width: 480px; }
@@ -77,6 +78,15 @@
       if (yes) inputEl.focus();
     }
 
+    // Unmute video on any user interaction
+    function unmute() {
+      videoEl.muted = false;
+      document.removeEventListener('click', unmute);
+      document.removeEventListener('keydown', unmute);
+    }
+    document.addEventListener('click', unmute);
+    document.addEventListener('keydown', unmute);
+
     const callbacks = {
       onSrcObjectReady(value) {
         stream = value;
@@ -103,12 +113,14 @@
             videoEl.srcObject = null;
             videoEl.src = idle;
             videoEl.loop = true;
+            videoEl.muted = false;
             videoEl.play().catch(() => {});
           }
           if (connected) setStatus('Connected ✓ — type a message');
         } else {
           videoEl.src = '';
           videoEl.srcObject = stream;
+          videoEl.muted = false;
           setStatus('Speaking...');
         }
       },
@@ -144,6 +156,9 @@
       inputEl.value = '';
       setReady(false);
       setStatus('Thinking...');
+
+      // Ensure unmuted before speaking
+      videoEl.muted = false;
 
       try {
         const res = await fetch(N8N_WEBHOOK, {
